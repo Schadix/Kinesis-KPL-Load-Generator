@@ -1,0 +1,315 @@
+{ "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Workers for SQS Queue",
+  "Parameters": {
+    "KeyName": {
+      "Description": "The EC2 Key Pair name to allow SSH access to the instances (Must already be present)",
+      "Default": "internal",
+      "Type": "String"
+    },
+    "VpcCidr": {
+      "Description": "CIDR block reserved by VPC",
+      "Default": "10.20.0.0/16",
+      "Type": "String"
+    },
+    "SubPub1Cidr": {
+      "Description": "CIDR block reserved by Public Subnet 1",
+      "Default": "10.20.1.0/24",
+      "Type": "String"
+    },
+    "SubPub2Cidr": {
+      "Description": "CIDR block reserved by Public Subnet 2",
+      "Default": "10.20.2.0/24",
+      "Type": "String"
+    },
+    "Zone1": {
+      "Description": "Availablity Zone 1 (Zones 1 & 2 must be in same region)",
+      "Type": "String",
+      "Default": "us-east-1a"
+    },
+    "Zone2": {
+      "Description": "Availablity Zone 2 (Zone 1 & 2 must be in same region)",
+      "Type": "String",
+      "Default": "us-east-1c"
+    },
+    "StreamName": {
+      "Description": "Stram Name",
+      "Type": "String",
+      "Default": "spark-example"
+    },
+    "ImageId": {
+      "Description": "ImageId",
+      "Type": "String",
+      "Default": "ami-3e80ef56"
+    },
+    "AutoscalingMin": {
+      "Description": "Minimum size of AutoScalingGroup",
+      "Type": "String",
+      "Default": "1"
+    },
+    "AutoscalingMax": {
+      "Description": "Minimum size of AutoScalingGroup",
+      "Type": "String",
+      "Default": "40"
+    },
+    "SshCidr": {
+      "Description": "Ingress IP for SSH Access (please change to your CIDR range)",
+      "Type": "String",
+      "Default": "0.0.0.0/0"
+    }
+  },
+  "Mappings": {
+
+  },
+  "Resources": {
+    "vpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "VpcCidr"
+        },
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true"
+      }
+
+    },
+    "igw": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+
+      }
+
+    },
+    "vpcIgw": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "InternetGatewayId": {
+          "Ref": "igw"
+        }
+
+      }
+    },
+    "subPub1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "SubPub1Cidr"
+        },
+        "AvailabilityZone": {"Fn::Select":[0, { "Fn::GetAZs" : "" }]},
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "Tags": [{
+          "Key": "Name",
+          "Value": "subPub1"
+        }]
+      }
+    },
+    "subPub2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "SubPub2Cidr"
+        },
+        "AvailabilityZone": {"Fn::Select":[1, { "Fn::GetAZs" : "" }]},
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "Tags": [{
+          "Key": "Name",
+          "Value": "subPub2"
+        }]
+      }
+    },
+    "subPub1Rt": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc"
+        }
+      }
+    },
+    "subPub2Rt": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpc"
+        }
+      }
+    },
+    "subPub1Route": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "subPub1Rt"
+        },
+        "SubnetId": {
+          "Ref": "subPub1"
+        }
+      }
+
+    },
+    "subPub1RouteConfig": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "subPub1Rt"
+        },
+        "GatewayId": {
+          "Ref": "igw"
+        }
+
+      }
+    },
+    "subPub2Route": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "subPub2Rt"
+        },
+        "SubnetId": {
+          "Ref": "subPub2"
+        }
+
+      }
+    },
+    "subPub2RouteConfig": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "subPub2Rt"
+        },
+        "GatewayId": {
+          "Ref": "igw"
+        }
+
+      }
+    },
+    "lcKPL": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "AssociatePublicIpAddress": "true",
+        "ImageId": {
+          "Ref": "ImageId"
+        },
+        "InstanceType": "t2.micro",
+        "IamInstanceProfile": {
+          "Ref": "profileKPL"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "SecurityGroups": [{
+          "Ref": "sgSsh"
+        }]
+
+      },
+      "DependsOn": ["sgSsh", "profileKPL", "vpcIgw"]
+    },
+    "asgKPL": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "AvailabilityZones": [{"Fn::Select":[0, { "Fn::GetAZs" : "" }]}, {"Fn::Select":[1, { "Fn::GetAZs" : "" }]}],
+        "MinSize": {"Ref":"AutoscalingMin"},
+        "MaxSize": {"Ref":"AutoscalingMax"},
+        "LaunchConfigurationName": {
+          "Ref": "lcKPL"
+        },
+        "VPCZoneIdentifier": [{
+          "Ref": "subPub1"
+        }, {
+          "Ref": "subPub2"
+        }],
+        "MetricsCollection": [{
+          "Granularity": "1Minute"
+        }],
+        "Tags": [{
+          "Key": "Name",
+          "Value": {
+            "Fn::Join": [
+              "", [
+                "Kinesis-Load-Generator-", {
+                  "Ref": "vpc"
+                }
+
+              ]
+            ]
+
+          },
+          "PropagateAtLaunch": "true"
+        }]
+
+      }
+
+    },
+    "sgSsh": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "SSH IN",
+        "VpcId": {
+          "Ref": "vpc"
+        },
+        "SecurityGroupIngress": [{
+          "IpProtocol": "tcp",
+          "FromPort": "22",
+          "ToPort": "22",
+          "CidrIp": {"Ref": "SshCidr"}
+        }]
+      }
+    },
+    "roleKPL": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [
+                "ec2.amazonaws.com"
+              ]
+            },
+            "Action": [
+              "sts:AssumeRole"
+            ]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "kinesis-cloudwatch",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Action": "kinesis:*",
+              "Resource": { "Fn::Join" : [":", ["arn:aws:kinesis", {"Ref" : "AWS::Region"},
+                {"Ref": "AWS::AccountId"}, {"Ref":  "StreamName"}]]
+              }
+            },
+              {"Effect": "Allow",
+                "Action":"cloudwatch:*",
+                "Resource": "*"}]
+          }
+        }]
+      }
+    },
+    "profileKPL": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [{
+          "Ref": "roleKPL"
+        }]
+      },
+      "DependsOn": ["roleKPL"]
+    }
+  },
+  "Outputs": {
+    "KinesisLoadAutoScaling": {"Ref": "asgKPL"}
+  }
+}
