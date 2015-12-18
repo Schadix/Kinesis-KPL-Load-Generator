@@ -32,7 +32,7 @@
       "Default": "us-east-1c"
     },
     "StreamName": {
-      "Description": "Stram Name",
+      "Description": "Stream Name",
       "Type": "String",
       "Default": "spark-example"
     },
