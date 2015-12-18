@@ -15,3 +15,6 @@ hs_err_pid*
 *.iml
 
 Infrastructure/cloudformation/config
+
+test/
+Kinesis-Load-Generator/dependency-reduced-pom.xml
