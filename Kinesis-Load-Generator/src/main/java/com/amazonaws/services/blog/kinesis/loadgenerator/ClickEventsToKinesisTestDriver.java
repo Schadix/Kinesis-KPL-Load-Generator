@@ -28,7 +28,7 @@ public class ClickEventsToKinesisTestDriver {
   private static ClickEvent generateClickEvent() {
     byte[] id = new byte[13];
     RANDOM.nextBytes(id);
-    if (position.get()-1>httpLog.size()){
+    if (position.get()>httpLog.size()){
       position.set(0);
     }
     String data = httpLog.get(position.getAndIncrement());
