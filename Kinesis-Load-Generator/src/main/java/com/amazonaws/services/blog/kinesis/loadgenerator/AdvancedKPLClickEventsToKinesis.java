@@ -25,7 +25,8 @@ public class AdvancedKPLClickEventsToKinesis
             BlockingQueue<ClickEvent> inputQueue) {
         super(inputQueue);
         kinesis = new KinesisProducer(new KinesisProducerConfiguration()
-                .setRegion(REGION));
+            .setRegion(REGION)
+            .setAggregationEnabled(false));
     }
 
     @Override

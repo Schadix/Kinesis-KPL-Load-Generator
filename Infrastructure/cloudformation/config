@@ -1,1 +1,5 @@
-S3BUCKETNAME=sdx-templates
+S3BUCKETNAME=sdx-kinesis-load
+STACKNAME=kinesis-load
+TEMPLATENAME=kinesis-loader.template
+REGION=us-east-1
+
