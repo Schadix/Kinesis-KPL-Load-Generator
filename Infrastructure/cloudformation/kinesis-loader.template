@@ -1,4 +1,5 @@
-{ "AWSTemplateFormatVersion": "2010-09-09",
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Workers for SQS Queue",
   "Parameters": {
     "KeyName": {
@@ -63,7 +64,6 @@
     }
   },
   "Mappings": {
-
   },
   "Resources": {
     "vpc": {
@@ -76,14 +76,11 @@
         "EnableDnsSupport": "true",
         "EnableDnsHostnames": "true"
       }
-
     },
     "igw": {
       "Type": "AWS::EC2::InternetGateway",
       "Properties": {
-
       }
-
     },
     "vpcIgw": {
       "Type": "AWS::EC2::VPCGatewayAttachment",
@@ -94,7 +91,6 @@
         "InternetGatewayId": {
           "Ref": "igw"
         }
-
       }
     },
     "subPub1": {
@@ -103,14 +99,23 @@
         "CidrBlock": {
           "Ref": "SubPub1Cidr"
         },
-        "AvailabilityZone": {"Fn::Select":[0, { "Fn::GetAZs" : "" }]},
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
         "VpcId": {
           "Ref": "vpc"
         },
-        "Tags": [{
-          "Key": "Name",
-          "Value": "subPub1"
-        }]
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "subPub1"
+          }
+        ]
       }
     },
     "subPub2": {
@@ -119,14 +124,23 @@
         "CidrBlock": {
           "Ref": "SubPub2Cidr"
         },
-        "AvailabilityZone": {"Fn::Select":[1, { "Fn::GetAZs" : "" }]},
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
         "VpcId": {
           "Ref": "vpc"
         },
-        "Tags": [{
-          "Key": "Name",
-          "Value": "subPub2"
-        }]
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "subPub2"
+          }
+        ]
       }
     },
     "subPub1Rt": {
@@ -155,7 +169,6 @@
           "Ref": "subPub1"
         }
       }
-
     },
     "subPub1RouteConfig": {
       "Type": "AWS::EC2::Route",
@@ -167,7 +180,6 @@
         "GatewayId": {
           "Ref": "igw"
         }
-
       }
     },
     "subPub2Route": {
@@ -179,7 +191,6 @@
         "SubnetId": {
           "Ref": "subPub2"
         }
-
       }
     },
     "subPub2RouteConfig": {
@@ -192,7 +203,6 @@
         "GatewayId": {
           "Ref": "igw"
         }
-
       }
     },
     "lcKPL": {
@@ -202,54 +212,88 @@
         "ImageId": {
           "Ref": "ImageId"
         },
-        "InstanceType": {"Ref": "InstanceType"},
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
         "IamInstanceProfile": {
           "Ref": "profileKPL"
         },
         "KeyName": {
           "Ref": "KeyName"
         },
-        "SecurityGroups": [{
-          "Ref": "sgSsh"
-        }]
-
+        "SecurityGroups": [
+          {
+            "Ref": "sgSsh"
+          }
+        ]
       },
-      "DependsOn": ["sgSsh", "profileKPL", "vpcIgw"]
+      "DependsOn": [
+        "sgSsh",
+        "profileKPL",
+        "vpcIgw"
+      ]
     },
     "asgKPL": {
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
-        "AvailabilityZones": [{"Fn::Select":[0, { "Fn::GetAZs" : "" }]}, {"Fn::Select":[1, { "Fn::GetAZs" : "" }]}],
-        "MinSize": {"Ref":"AutoscalingMin"},
-        "MaxSize": {"Ref":"AutoscalingMax"},
+        "AvailabilityZones": [
+          {
+            "Fn::Select": [
+              0,
+              {
+                "Fn::GetAZs": ""
+              }
+            ]
+          },
+          {
+            "Fn::Select": [
+              1,
+              {
+                "Fn::GetAZs": ""
+              }
+            ]
+          }
+        ],
+        "MinSize": {
+          "Ref": "AutoscalingMin"
+        },
+        "MaxSize": {
+          "Ref": "AutoscalingMax"
+        },
         "LaunchConfigurationName": {
           "Ref": "lcKPL"
         },
-        "VPCZoneIdentifier": [{
-          "Ref": "subPub1"
-        }, {
-          "Ref": "subPub2"
-        }],
-        "MetricsCollection": [{
-          "Granularity": "1Minute"
-        }],
-        "Tags": [{
-          "Key": "Name",
-          "Value": {
-            "Fn::Join": [
-              "", [
-                "Kinesis-Load-Generator-", {
-                  "Ref": "vpc"
-                }
-
-              ]
-            ]
+        "VPCZoneIdentifier": [
+          {
+            "Ref": "subPub1"
           },
-          "PropagateAtLaunch": "true"
-        }]
-
+          {
+            "Ref": "subPub2"
+          }
+        ],
+        "MetricsCollection": [
+          {
+            "Granularity": "1Minute"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "Kinesis-Load-Generator-",
+                  {
+                    "Ref": "vpc"
+                  }
+                ]
+              ]
+            },
+            "PropagateAtLaunch": "true"
+          }
+        ]
       }
-
     },
     "sgSsh": {
       "Type": "AWS::EC2::SecurityGroup",
@@ -258,12 +302,16 @@
         "VpcId": {
           "Ref": "vpc"
         },
-        "SecurityGroupIngress": [{
-          "IpProtocol": "tcp",
-          "FromPort": "22",
-          "ToPort": "22",
-          "CidrIp": {"Ref": "SshCidr"}
-        }]
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": {
+              "Ref": "SshCidr"
+            }
+          }
+        ]
       }
     },
     "roleKPL": {
@@ -271,47 +319,86 @@
       "Properties": {
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
-          "Statement": [{
-            "Effect": "Allow",
-            "Principal": {
-              "Service": [
-                "ec2.amazonaws.com"
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
               ]
-            },
-            "Action": [
-              "sts:AssumeRole"
-            ]
-          }]
+            }
+          ]
         },
         "Path": "/",
-        "Policies": [{
-          "PolicyName": "kinesis-cloudwatch",
-          "PolicyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [{
-              "Effect": "Allow",
-              "Action": "kinesis:*",
-              "Resource": { "Fn::Join" : [":", ["arn:aws:kinesis", {"Ref" : "AWS::Region"},
-                {"Ref": "AWS::AccountId"}, {
-                  "Fn::Join": ["/",["stream",{"Ref": "StreamName"}]]}]]
-              }
-            },
-              {"Effect": "Allow",
-                "Action":"cloudwatch:*",
-                "Resource": "*"}]
+        "Policies": [
+          {
+            "PolicyName": "kinesis-cloudwatch",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "kinesis:*",
+                  "Resource": {
+                    "Fn::Join": [
+                      ":",
+                      [
+                        "arn:aws:kinesis",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        {
+                          "Fn::Join": [
+                            "/",
+                            [
+                              "stream",
+                              {
+                                "Ref": "StreamName"
+                              }
+                            ]
+                          ]
+                        }
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "cloudwatch:*",
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": ["s3:GetObject", "s3:ListObjects"],
+                  "Resource": ["arn:aws:s3:::sdx-kinesis-load/*","arn:aws:s3:::sdx-kinesis-load/"
+                  ]
+                }
+              ]
+            }
           }
-        }]
+        ]
       }
     },
     "profileKPL": {
       "Type": "AWS::IAM::InstanceProfile",
       "Properties": {
         "Path": "/",
-        "Roles": [{
-          "Ref": "roleKPL"
-        }]
+        "Roles": [
+          {
+            "Ref": "roleKPL"
+          }
+        ]
       },
-      "DependsOn": ["roleKPL"]
+      "DependsOn": [
+        "roleKPL"
+      ]
     }
   },
   "Outputs": {
