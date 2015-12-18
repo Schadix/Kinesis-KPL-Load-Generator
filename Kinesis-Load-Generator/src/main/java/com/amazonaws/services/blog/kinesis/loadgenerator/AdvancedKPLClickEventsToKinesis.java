@@ -45,21 +45,21 @@ public class AdvancedKPLClickEventsToKinesis
         Futures.addCallback(f, new FutureCallback<UserRecordResult>() {
             @Override
             public void onSuccess(UserRecordResult result) {
-                long totalTime = result.getAttempts().stream()
-                        .mapToLong(a -> a.getDelay() + a.getDuration())
-                        .sum();
+//                long totalTime = result.getAttempts().stream()
+//                        .mapToLong(a -> a.getDelay() + a.getDuration())
+//                        .sum();
                 // Only log with a small probability, otherwise it'll be very
                 // spammy
-                if (RANDOM.nextDouble() < 1e-5) {
-                    log.info(String.format(
-                            "Succesfully put record, partitionKey=%s, "
-                                    + "payload=%s, sequenceNumber=%s, "
-                                    + "shardId=%s, took %d attempts, "
-                                    + "totalling %s ms",
-                            partitionKey, payload, result.getSequenceNumber(),
-                            result.getShardId(), result.getAttempts().size(),
-                            totalTime));
-                }
+//                if (RANDOM.nextDouble() < 1e-5) {
+//                    log.info(String.format(
+//                            "Succesfully put record, partitionKey=%s, "
+//                                    + "payload=%s, sequenceNumber=%s, "
+//                                    + "shardId=%s, took %d attempts, "
+//                                    + "totalling %s ms",
+//                            partitionKey, payload, result.getSequenceNumber(),
+//                            result.getShardId(), result.getAttempts().size(),
+//                            totalTime));
+//                }
             }
 
             @Override
