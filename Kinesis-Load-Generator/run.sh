@@ -5,4 +5,6 @@ if [ "$#" -ne 1 ]; then
     exit
 fi
 
-mvn compile exec:java -Dexec.mainClass=com.amazonaws.services.blog.kinesis.loadgenerator.ClickEventsToKinesisTestDriver $1
+mvn compile exec:java \
+-Dexec.mainClass=com.amazonaws.services.blog.kinesis.loadgenerator.ClickEventsToKinesisTestDriver \
+-Dexec.args="$1"

@@ -1,7 +1,5 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
-import org.apache.commons.lang.StringUtils;
-
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -15,7 +13,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 
 public class ClickEventsToKinesisTestDriver {
@@ -28,7 +25,7 @@ public class ClickEventsToKinesisTestDriver {
   private static ClickEvent generateClickEvent() {
     byte[] id = new byte[13];
     RANDOM.nextBytes(id);
-    if (position.get()>httpLog.size()){
+    if (position.get() > httpLog.size()) {
       position.set(0);
     }
     String data = httpLog.get(position.getAndIncrement());
@@ -50,7 +47,7 @@ public class ClickEventsToKinesisTestDriver {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length<1){
+    if (args.length < 1) {
       System.out.println("Usage: ClickEventsToKinesisTestDriver <filename as gz>");
       System.exit(1);
     }
