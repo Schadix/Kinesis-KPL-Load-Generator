@@ -1,5 +1,6 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import org.apache.commons.daemon.Daemon;
 import org.apache.commons.daemon.DaemonContext;
 import org.apache.commons.daemon.DaemonInitException;
@@ -36,7 +37,9 @@ public class DaemonProcess implements Daemon {
   private final ExecutorService exec = Executors.newCachedThreadPool();
   final LocalDateTime testStart = LocalDateTime.now();
 
-  final AbstractClickEventsToKinesis worker = new AdvancedKPLClickEventsToKinesis(events);
+  KinesisProducerConfiguration config = new KinesisProducerConfiguration();
+
+  AbstractClickEventsToKinesis worker;
 
   private void readGzipFile(String filename) throws IOException {
     BufferedReader is = new BufferedReader(
@@ -52,10 +55,12 @@ public class DaemonProcess implements Daemon {
       httpLog.add(line);
   }
 
-  private ClickEvent generateClickEvent() {
+  synchronized private ClickEvent generateClickEvent() {
     byte[] id = new byte[13];
     RANDOM.nextBytes(id);
-    if (position.get() > httpLog.size()) {
+    if (position.get() > httpLog.size() - 1) {
+      System.out.println(
+          String.format("in position.set(0 - pos: %s, httpLog.size: %s)", position.get(), httpLog.size()));
       position.set(0);
     }
     String data = httpLog.get(position.getAndIncrement());
@@ -70,8 +75,19 @@ public class DaemonProcess implements Daemon {
          * method as follows:
          */
     String[] args = daemonContext.getArguments();
+    if (args.length != 3) {
+      System.out.println("Usage: command <filename.gz> <AWS Region> <Streamname>");
+      System.exit(1);
+    } ;
 
+    System.out.println(String.format("file: %s, region: %s, stream: %s", args[0], args[1], args[2]));
     readGzipFile(args[0]);
+    config.setRegion(args[1]);
+    config.setAggregationEnabled(false);
+    worker = new AdvancedKPLClickEventsToKinesis(events, config);
+    worker.setStreamName(args[2]);
+
+    position.set(0);
 
     sendThread = new Thread() {
 
@@ -87,7 +103,7 @@ public class DaemonProcess implements Daemon {
         try {
           exec.submit(worker);
 
-          if (worker instanceof KPLClickEventsToKinesis) {
+          if (worker instanceof AdvancedKPLClickEventsToKinesis) {
             for (int i = 0; i < 200; i++) {
               events.offer(generateClickEvent());
             }
@@ -126,10 +142,10 @@ public class DaemonProcess implements Daemon {
           double rps = (double) (records - recordsAtWinStart) / 10;
 
           System.out.println(String.format(
-              "%d seconds, %d records total, %.2f RPS (avg last 10s)",
-              seconds,
-              records,
-              rps));
+              "%d seconds, %d records total, %.2f RPS (avg last 10s), position: %s, httpLog.size(): %s, event.size()" +
+                  ": %s",
+              seconds, records,
+              rps, position.get(), httpLog.size(), events.size()));
           Thread.sleep(1000);
         }
         System.out.println("Finished.");

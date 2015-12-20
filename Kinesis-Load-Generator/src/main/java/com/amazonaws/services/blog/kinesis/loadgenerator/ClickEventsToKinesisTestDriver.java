@@ -1,5 +1,7 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
+
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -54,12 +56,18 @@ public class ClickEventsToKinesisTestDriver {
 
     final BlockingQueue<ClickEvent> events = new ArrayBlockingQueue<ClickEvent>(65536);
     final ExecutorService exec = Executors.newCachedThreadPool();
+    KinesisProducerConfiguration config = new KinesisProducerConfiguration();
+
 
     readGzipFile(args[0]);
+    config.setRegion(args[1]);
+    config.setAggregationEnabled(false);
 
     System.out.println(String.format("length of httpLog: %s", httpLog.size()));
     // Change this line to use a different implementation
-    final AbstractClickEventsToKinesis worker = new AdvancedKPLClickEventsToKinesis(events);
+    final AbstractClickEventsToKinesis worker = new AdvancedKPLClickEventsToKinesis(events, config).setStreamName
+        (args[2]);
+
     exec.submit(worker);
 
     // Warm up the KinesisProducer instance

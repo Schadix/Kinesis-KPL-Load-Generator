@@ -1,15 +1,23 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractClickEventsToKinesis implements Runnable {
-    protected final static String STREAM_NAME = "spark-example";
-    protected final static String REGION = "us-east-1";
-
     protected final BlockingQueue<ClickEvent> inputQueue;
     protected volatile boolean shutdown = false;
     protected final AtomicLong recordsPut = new AtomicLong(0);
+
+    protected String streamName = "undefined";
+
+    public AbstractClickEventsToKinesis setStreamName(String streamName) {
+        this.streamName = streamName;
+        return this;
+    }
+
 
     protected AbstractClickEventsToKinesis(
             BlockingQueue<ClickEvent> inputQueue) {
@@ -36,4 +44,5 @@ public abstract class AbstractClickEventsToKinesis implements Runnable {
     }
 
     protected abstract void runOnce() throws Exception;
+
 }

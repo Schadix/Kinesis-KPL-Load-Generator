@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Workers for SQS Queue",
+  "Description": "Instances to generate load on Kinesis Streams",
   "Parameters": {
     "KeyName": {
       "Description": "The EC2 Key Pair name to allow SSH access to the instances (Must already be present)",
@@ -22,16 +22,6 @@
       "Default": "10.20.2.0/24",
       "Type": "String"
     },
-    "Zone1": {
-      "Description": "Availablity Zone 1 (Zones 1 & 2 must be in same region)",
-      "Type": "String",
-      "Default": "us-east-1a"
-    },
-    "Zone2": {
-      "Description": "Availablity Zone 2 (Zone 1 & 2 must be in same region)",
-      "Type": "String",
-      "Default": "us-east-1c"
-    },
     "StreamName": {
       "Description": "Stream Name",
       "Type": "String",
@@ -50,7 +40,7 @@
     "AutoscalingMax": {
       "Description": "Minimum size of AutoScalingGroup",
       "Type": "String",
-      "Default": "40"
+      "Default": "1"
     },
     "SshCidr": {
       "Description": "Ingress IP for SSH Access (please change to your CIDR range)",
@@ -58,9 +48,14 @@
       "Default": "0.0.0.0/0"
     },
     "InstanceType": {
-      "Description": "Ingress IP for SSH Access (please change to your CIDR range)",
+      "Description": "Instance Type",
       "Type": "String",
       "Default": "c3.xlarge"
+    },
+    "S3FileNameGZ": {
+      "Description": "S3 location of GZipped file with content to push to Kinesis (no prefix s3://",
+      "Type": "String",
+      "Default": "sdx-kinesis-load/NASA_access_log_Jul95.gz"
     }
   },
   "Mappings": {
@@ -225,7 +220,51 @@
           {
             "Ref": "sgSsh"
           }
-        ]
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "yum -y update\n",
+                "yum -y install java-1.8.0\n",
+                "yum -y remove java-1.7.0-openjdk\n",
+                "yum -y install java-1.8.0-openjdk-devel\n",
+                "yum -y install jsvc\n",
+                "aws s3 cp s3://sdx-kinesis-load/kinesis-load-generator /home/ec2-user/\n",
+                "mv /home/ec2-user/kinesis-load-generator /etc/init.d/\n",
+                "chmod 755 /etc/init.d/kinesis-load-generator\n",
+                "su -c 'mkdir -p /home/ec2-user/kinesis-load-generator/log' ec2-user\n",
+                "aws s3 cp s3://sdx-kinesis-load/kinesis-load-generator-1.0-SNAPSHOT.jar ",
+                "/home/ec2-user/kinesis-load-generator/kinesis-load-generator-1.0-SNAPSHOT.jar\n",
+                "aws s3 cp s3://",
+                {
+                  "Ref": "S3FileNameGZ"
+                },
+                " /home/ec2-user/\n",
+                "echo \"FILENAMEGZ=/home/ec2-user/`basename ",
+                {
+                  "Ref": "S3FileNameGZ"
+                },
+                "`\" > /home/ec2-user/kinesis-load-generator.config\n",
+                "echo 'REGION=",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "' >> /home/ec2-user/kinesis-load-generator.config\n",
+                "echo 'STREAMNAME=",
+                {
+                  "Ref": "StreamName"
+                },
+                "' >> /home/ec2-user/kinesis-load-generator.config\n",
+                "service kinesis-load-generator start\n",
+                "\n"
+              ]
+            ]
+          }
+        }
       },
       "DependsOn": [
         "sgSsh",
@@ -283,10 +322,7 @@
               "Fn::Join": [
                 "",
                 [
-                  "Kinesis-Load-Generator-",
-                  {
-                    "Ref": "vpc"
-                  }
+                  {"Ref": "AWS::StackName"}, "-KPL"
                 ]
               ]
             },
@@ -376,9 +412,21 @@
                 },
                 {
                   "Effect": "Allow",
-                  "Action": ["s3:GetObject", "s3:ListObjects"],
-                  "Resource": ["arn:aws:s3:::sdx-kinesis-load/*","arn:aws:s3:::sdx-kinesis-load/"
-                  ]
+                  "Action": [
+                    "s3:GetObject",
+                    "s3:ListObjects"
+                  ],
+                  "Resource": [{
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        {
+                          "Ref": "S3FileNameGZ"
+                        }
+                      ]
+                    ]
+                  }, "arn:aws:s3:::sdx-kinesis-load/*", "arn:aws:s3:::sdx-kinesis-load/"]
                 }
               ]
             }
