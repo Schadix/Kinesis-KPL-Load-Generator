@@ -54,8 +54,7 @@ jsvc_exec()
 {
     cd $FILE_PATH
     echo $EXEC -home $JAVA_HOME -cp $CLASS_PATH -user $USER -outfile $LOG_OUT \
-      -errfile $LOG_ERR -debug -pidfile $PID
-     $1 $CLASS $ARGS
+      -errfile $LOG_ERR -debug -pidfile $PID $1 $CLASS $ARGS
     $EXEC -home $JAVA_HOME -cp $CLASS_PATH -user $USER -outfile $LOG_OUT \
       -errfile $LOG_ERR -debug -pidfile $PID $1 $CLASS $ARGS
 }
