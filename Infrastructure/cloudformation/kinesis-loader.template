@@ -56,6 +56,11 @@
       "Description": "S3 location of GZipped file with content to push to Kinesis (no prefix s3://",
       "Type": "String",
       "Default": "sdx-kinesis-load/NASA_access_log_Jul95.gz"
+    },
+    "RateLimit": {
+      "Description": "% limit for pushing into Kinesis (defaults to aggressive 150 %)",
+      "Type": "Number",
+      "Default": "150"
     }
   },
   "Mappings": {
@@ -257,6 +262,11 @@
                 "echo 'STREAMNAME=",
                 {
                   "Ref": "StreamName"
+                },
+                "' >> /home/ec2-user/kinesis-load-generator.config\n",
+                "echo 'RATELIMIT=",
+                {
+                  "Ref": "RateLimit"
                 },
                 "' >> /home/ec2-user/kinesis-load-generator.config\n",
                 "service kinesis-load-generator start\n",

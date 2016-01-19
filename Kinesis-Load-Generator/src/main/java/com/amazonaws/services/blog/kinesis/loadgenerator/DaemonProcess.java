@@ -75,8 +75,8 @@ public class DaemonProcess implements Daemon {
          * method as follows:
          */
     String[] args = daemonContext.getArguments();
-    if (args.length != 3) {
-      System.out.println("Usage: command <filename.gz> <AWS Region> <Streamname>");
+    if (args.length != 4) {
+      System.out.println("Usage: command <filename.gz> <AWS Region> <Streamname> <Rate-Limit>");
       System.exit(1);
     } ;
 
@@ -84,6 +84,7 @@ public class DaemonProcess implements Daemon {
     readGzipFile(args[0]);
     config.setRegion(args[1]);
     config.setAggregationEnabled(false);
+    config.setRateLimit(Long.parseLong(args[3]));
     worker = new AdvancedKPLClickEventsToKinesis(events, config);
     worker.setStreamName(args[2]);
 

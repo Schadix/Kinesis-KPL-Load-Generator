@@ -36,7 +36,7 @@ CLASS_PATH="$FILE_PATH/kinesis-load-generator-1.0-SNAPSHOT.jar"
 CLASS="com.amazonaws.services.blog.kinesis.loadgenerator.DaemonProcess"
 
 # Any command line arguments to be passed to the our Java Daemon implementations init() method
-ARGS="$FILENAMEGZ $REGION $STREAMNAME"
+ARGS="$FILENAMEGZ $REGION $STREAMNAME $RATELIMIT"
 
 #The user to run the daemon as
 USER="ec2-user"

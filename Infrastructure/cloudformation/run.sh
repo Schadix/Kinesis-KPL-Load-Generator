@@ -8,7 +8,7 @@
 #STACKNAME=$2
 #REGION=$3
 
-. ./config.sh
+. ./config
 
 #aws cloudformation delete-stack --stack-name $STACKNAME --region $REGION
 aws s3 sync . s3://$S3BUCKETNAME/
