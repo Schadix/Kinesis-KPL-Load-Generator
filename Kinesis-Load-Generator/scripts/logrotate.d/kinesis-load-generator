@@ -1,0 +1,8 @@
+"/home/ec2-user/kinesis-load-generator/log/*" {
+  compress
+  rotate 10
+  size 100M
+  postrotate
+    /bin/kill -USR1 $(cat /home/ec2-user/kinesis-load-generator/kinesis-load-generator.pid)
+  endscript
+}

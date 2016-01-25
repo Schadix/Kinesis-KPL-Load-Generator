@@ -4,6 +4,8 @@ import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import org.apache.commons.daemon.Daemon;
 import org.apache.commons.daemon.DaemonContext;
 import org.apache.commons.daemon.DaemonInitException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
@@ -25,6 +27,8 @@ import java.util.zip.GZIPInputStream;
  */
 public class DaemonProcess implements Daemon {
 
+  private static Logger log = LogManager.getLogger();
+
   private static Random RANDOM = new Random();
 
   private Thread sendThread;
@@ -41,25 +45,31 @@ public class DaemonProcess implements Daemon {
 
   AbstractClickEventsToKinesis worker;
 
-  private void readGzipFile(String filename) throws IOException {
-    BufferedReader is = new BufferedReader(
-        new InputStreamReader(
-            new GZIPInputStream(
-                new FileInputStream(filename))));
-
-    String line;
-    // Now read lines of text: the BufferedReader puts them in lines,
-    // the InputStreamReader does Unicode conversion, and the
-    // GZipInputStream "gunzip"s the data from the FileInputStream.
-    while ((line = is.readLine()) != null)
-      httpLog.add(line);
+  private boolean readGzipFile(String filename) {
+    try {
+      BufferedReader is = new BufferedReader(
+          new InputStreamReader(
+              new GZIPInputStream(
+                  new FileInputStream(filename))));
+      String line;
+      // Now read lines of text: the BufferedReader puts them in lines,
+      // the InputStreamReader does Unicode conversion, and the
+      // GZipInputStream "gunzip"s the data from the FileInputStream.
+      while ((line = is.readLine()) != null)
+        httpLog.add(line);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return false;
+    }
+    log.info(String.format("Reading input file %s with %s lines succeeded.", filename, httpLog.size()));
+    return true;
   }
 
   synchronized private ClickEvent generateClickEvent() {
     byte[] id = new byte[13];
     RANDOM.nextBytes(id);
     if (position.get() > httpLog.size() - 1) {
-      System.out.println(
+      log.info(
           String.format("in position.set(0 - pos: %s, httpLog.size: %s)", position.get(), httpLog.size()));
       position.set(0);
     }
@@ -76,15 +86,21 @@ public class DaemonProcess implements Daemon {
          */
     String[] args = daemonContext.getArguments();
     if (args.length != 4) {
-      System.out.println("Usage: command <filename.gz> <AWS Region> <Streamname> <Rate-Limit>");
+      log.info("Usage: command <filename.gz> <AWS Region> <Streamname> <Rate-Limit>");
       System.exit(1);
-    } ;
+    }
 
-    System.out.println(String.format("file: %s, region: %s, stream: %s", args[0], args[1], args[2]));
-    readGzipFile(args[0]);
+    log.info(String.format("file: %s, region: %s, stream: %s, rate: %s", args[0], args[1], args[2], args[3]));
+    if (!readGzipFile(args[0])) {
+      log.error("Exit with error. Reading input file failed.");
+      System.exit(1);
+    }
+    ;
     config.setRegion(args[1]);
     config.setAggregationEnabled(false);
-    config.setRateLimit(Long.parseLong(args[3]));
+//    TODO: RateLimit didn't work, using it to pause the thread now
+//    config.setRateLimit(Long.parseLong(args[3]));
+    long rateLimit = Long.parseLong(args[3]);
     worker = new AdvancedKPLClickEventsToKinesis(events, config);
     worker.setStreamName(args[2]);
 
@@ -107,6 +123,7 @@ public class DaemonProcess implements Daemon {
           if (worker instanceof AdvancedKPLClickEventsToKinesis) {
             for (int i = 0; i < 200; i++) {
               events.offer(generateClickEvent());
+              Thread.sleep(1000/rateLimit, (int) (1000 % rateLimit));
             }
             Thread.sleep(1000);
           }
@@ -115,14 +132,15 @@ public class DaemonProcess implements Daemon {
             while (!stopped) {
               try {
                 events.put(generateClickEvent());
+                Thread.sleep(1000/rateLimit, (int) (1000 % rateLimit));
               } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error(e.getMessage(), e);
               }
             }
 
           });
         } catch (Exception e) {
-          e.printStackTrace();
+          log.error(e.getMessage(), e);
           System.exit(1);
         }
       }
@@ -142,16 +160,16 @@ public class DaemonProcess implements Daemon {
               history.containsKey(windowStart) ? history.get(windowStart) : 0;
           double rps = (double) (records - recordsAtWinStart) / 10;
 
-          System.out.println(String.format(
+          log.info(String.format(
               "%d seconds, %d records total, %.2f RPS (avg last 10s), position: %s, httpLog.size(): %s, event.size()" +
                   ": %s",
               seconds, records,
               rps, position.get(), httpLog.size(), events.size()));
           Thread.sleep(1000);
         }
-        System.out.println("Finished.");
+        log.info("Finished.");
       } catch (Exception e) {
-        e.printStackTrace();
+        log.error(e.getMessage(), e);
         System.exit(1);
       }
     }).start();

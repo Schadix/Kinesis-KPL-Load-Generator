@@ -4,8 +4,11 @@ package com.amazonaws.services.blog.kinesis.loadgenerator;
 import org.apache.commons.daemon.Daemon;
 import org.apache.commons.daemon.DaemonContext;
 import org.apache.commons.daemon.DaemonInitException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class MyDaemon implements Daemon {
+  private static Logger log = LogManager.getLogger();
 
   private Thread myThread;
   private boolean stopped = false;
@@ -34,7 +37,7 @@ public class MyDaemon implements Daemon {
         while (!stopped) {
           long now = System.currentTimeMillis();
           if (now - lastTick >= 1000) {
-            System.out.println(!lastOneWasATick ? "tick" : "tock");
+            log.info(!lastOneWasATick ? "tick" : "tock");
             lastOneWasATick = !lastOneWasATick;
             lastTick = now;
           }

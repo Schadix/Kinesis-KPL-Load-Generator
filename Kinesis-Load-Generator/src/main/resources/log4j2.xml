@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
   <Appenders>
-    <Console name="Console" target="SYSTEM_OUT">
-      <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
-    </Console>
-    <RollingFile name="RollingFile" fileName="logs/output.log"
+    <RollingFile name="RollingFile" fileName="log/output.log"
                  filePattern="logs/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
       <PatternLayout>
         <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
@@ -15,7 +12,7 @@
       </Policies>
     </RollingFile>
     <RollingFile name="RollingFileError" fileName="logs/error.log"
-                 filePattern="logs/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
+                 filePattern="log/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
       <PatternLayout>
         <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
       </PatternLayout>
@@ -26,11 +23,10 @@
     </RollingFile>
   </Appenders>
   <Loggers>
-    <Logger name="com.amazonaws.services.blog.kinesis.loadgenerator" level="trace">
+    <Logger name="com.amazonaws.services.blog.kinesis.loadgenerator" level="TRACE" additivity="false">
       <AppenderRef ref="RollingFile"/>
     </Logger>
-    <Root level="error">
-      <AppenderRef ref="Console"/>
+    <Root level="ERROR">
       <AppenderRef ref="RollingFileError"/>
     </Root>
   </Loggers>

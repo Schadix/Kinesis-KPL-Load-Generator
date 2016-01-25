@@ -42,7 +42,7 @@ ARGS="$FILENAMEGZ $REGION $STREAMNAME $RATELIMIT"
 USER="ec2-user"
 
 # The file that will contain our process identification number (pid) for other scripts/programs that need to access it.
-PID="/var/run/$NAME.pid"
+PID="$FILE_PATH/$NAME.pid"
 
 # System.out writes to this file...
 LOG_OUT="$FILE_PATH/log/$NAME.out"
@@ -53,11 +53,12 @@ LOG_ERR="$FILE_PATH/log/$NAME.err"
 jsvc_exec()
 {
     cd $FILE_PATH
-    echo $EXEC -home $JAVA_HOME -cp $CLASS_PATH -user $USER -outfile $LOG_OUT \
-      -errfile $LOG_ERR -debug -pidfile $PID $1 $CLASS $ARGS
-    $EXEC -home $JAVA_HOME -cp $CLASS_PATH -user $USER -outfile $LOG_OUT \
-      -errfile $LOG_ERR -debug -pidfile $PID $1 $CLASS $ARGS
+    echo su -c "$EXEC -home $JAVA_HOME -cp $CLASS_PATH -user $USER -outfile $LOG_OUT \
+      -errfile $LOG_ERR -debug -pidfile $PID $1 $CLASS $ARGS" ec2-user
+    su -c "$EXEC -home $JAVA_HOME -cp $CLASS_PATH -user $USER -outfile $LOG_OUT \
+      -errfile $LOG_ERR -debug -pidfile $PID $1 $CLASS $ARGS" ec2-user
 }
+
 
 case "$1" in
     start)

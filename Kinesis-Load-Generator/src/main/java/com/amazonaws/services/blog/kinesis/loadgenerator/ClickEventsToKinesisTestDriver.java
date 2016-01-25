@@ -1,6 +1,8 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
 import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
@@ -18,6 +20,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 public class ClickEventsToKinesisTestDriver {
+  private static Logger log = LogManager.getLogger();
+
   private static Random RANDOM = new Random();
 
   private static final Duration TEST_DURATION = Duration.ofSeconds(180);
@@ -111,7 +115,7 @@ public class ClickEventsToKinesisTestDriver {
               history.containsKey(windowStart) ? history.get(windowStart) : 0;
           double rps = (double) (records - recordsAtWinStart) / 10;
 
-          System.out.println(String.format(
+          log.info(String.format(
               "%d seconds, %d records total, %.2f RPS (avg last 10s)",
               seconds,
               records,
