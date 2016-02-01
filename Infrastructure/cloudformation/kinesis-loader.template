@@ -58,7 +58,7 @@
       "Default": "sdx-kinesis-load/NASA_access_log_Jul95.gz"
     },
     "RateLimit": {
-      "Description": "% limit for pushing into Kinesis (defaults to aggressive 150 %)",
+      "Description": "rps to generate",
       "Type": "Number",
       "Default": "150"
     }
