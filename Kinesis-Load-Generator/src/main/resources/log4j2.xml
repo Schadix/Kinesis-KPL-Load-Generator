@@ -2,7 +2,7 @@
 <Configuration status="WARN">
   <Appenders>
     <RollingFile name="RollingFile" fileName="log/output.log"
-                 filePattern="logs/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
+                 filePattern="log/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
       <PatternLayout>
         <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
       </PatternLayout>
@@ -11,7 +11,7 @@
         <SizeBasedTriggeringPolicy size="250 MB"/>
       </Policies>
     </RollingFile>
-    <RollingFile name="RollingFileError" fileName="logs/error.log"
+    <RollingFile name="RollingFileError" fileName="log/error.log"
                  filePattern="log/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
       <PatternLayout>
         <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>

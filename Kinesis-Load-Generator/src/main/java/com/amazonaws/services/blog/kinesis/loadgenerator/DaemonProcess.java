@@ -1,5 +1,9 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
 import org.apache.commons.daemon.Daemon;
 import org.apache.commons.daemon.DaemonContext;
@@ -10,15 +14,11 @@ import org.apache.logging.log4j.Logger;
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
@@ -32,16 +32,21 @@ public class DaemonProcess implements Daemon {
   private static Random RANDOM = new Random();
 
   private Thread sendThread;
+  private Thread configUpdateThread;
   private boolean stopped = false;
 
   private List<String> httpLog = new ArrayList<>();
   private AtomicInteger position = new AtomicInteger(0);
+  private static String ConfigDDBTable = "configDDBTable";
+  private static String configRateLimitDDBKey = "rateLimit";
 
   private final BlockingQueue<ClickEvent> events = new ArrayBlockingQueue<>(65536);
   private final ExecutorService exec = Executors.newCachedThreadPool();
   final LocalDateTime testStart = LocalDateTime.now();
 
   KinesisProducerConfiguration config = new KinesisProducerConfiguration();
+  static ConcurrentHashMap<String, String> loadConfig =
+      new ConcurrentHashMap<>(8, 0.9f, 1);
 
   AbstractClickEventsToKinesis worker;
 
@@ -85,22 +90,24 @@ public class DaemonProcess implements Daemon {
          * method as follows:
          */
     String[] args = daemonContext.getArguments();
-    if (args.length != 4) {
-      log.info("Usage: command <filename.gz> <AWS Region> <Streamname> <Rate-Limit>");
+    if (args.length != 5) {
+      log.info("Usage: command <filename.gz> <AWS Region> <Streamname> <Rate-Limit> <Configuration-DDB-Table>");
       System.exit(1);
     }
 
-    log.info(String.format("file: %s, region: %s, stream: %s, rate: %s", args[0], args[1], args[2], args[3]));
+    log.info(String.format("file: %s, region: %s, stream: %s, rate: %s, config-ddb: %s", args[0], args[1], args[2],
+        args[3], args[4]));
     if (!readGzipFile(args[0])) {
       log.error("Exit with error. Reading input file failed.");
       System.exit(1);
     }
-    ;
+
     config.setRegion(args[1]);
     config.setAggregationEnabled(false);
 //    TODO: RateLimit didn't work, using it to pause the thread now
 //    config.setRateLimit(Long.parseLong(args[3]));
-    long rateLimit = Long.parseLong(args[3]);
+    loadConfig.put(ConfigDDBTable, args[4]);
+    loadConfig.put(configRateLimitDDBKey, args[3]);
     worker = new AdvancedKPLClickEventsToKinesis(events, config);
     worker.setStreamName(args[2]);
 
@@ -123,7 +130,8 @@ public class DaemonProcess implements Daemon {
           if (worker instanceof AdvancedKPLClickEventsToKinesis) {
             for (int i = 0; i < 200; i++) {
               events.offer(generateClickEvent());
-              Thread.sleep(1000/rateLimit, (int) (1000 % rateLimit));
+              long rateLimit = Long.valueOf(loadConfig.get(configRateLimitDDBKey));
+              Thread.sleep(1000 / rateLimit, (int) (1000 % rateLimit));
             }
             Thread.sleep(1000);
           }
@@ -132,7 +140,8 @@ public class DaemonProcess implements Daemon {
             while (!stopped) {
               try {
                 events.put(generateClickEvent());
-                Thread.sleep(1000/rateLimit, (int) (1000 % rateLimit));
+                long rateLimit = Long.valueOf(loadConfig.get(configRateLimitDDBKey));
+                Thread.sleep(1000 / rateLimit, (int) (1000 % rateLimit));
               } catch (InterruptedException e) {
                 log.error(e.getMessage(), e);
               }
@@ -145,6 +154,26 @@ public class DaemonProcess implements Daemon {
         }
       }
     };
+
+    new Thread(() -> {
+      try {
+        while (!exec.isTerminated()) {
+          DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient());
+          Table table = dynamoDB.getTable(loadConfig.get(ConfigDDBTable));
+          Item rateLimitDDB = table.getItem("id", configRateLimitDDBKey);
+          String oldValue = loadConfig.get(configRateLimitDDBKey);
+          String newValue = rateLimitDDB.getString("value");
+          loadConfig.put(configRateLimitDDBKey, newValue);
+          if (!oldValue.equals(newValue)) {
+            log.info(String.format("RateLimit changed from %s to %s", oldValue, newValue));
+          }
+          Thread.sleep(10000);
+        }
+      } catch (Exception e) {
+        log.error(e.getMessage(), e);
+        System.exit(1);
+      }
+    }).start();
 
     // This reports the average records per second over a 10 second sliding window
     new Thread(() -> {

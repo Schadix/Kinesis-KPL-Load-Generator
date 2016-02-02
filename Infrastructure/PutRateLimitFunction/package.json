@@ -1,0 +1,21 @@
+{
+  "name": "putRateLimitFunction",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "aws-sdk": "^2.1.45",
+    "grunt": "^0.4.5",
+    "grunt-aws-lambda": "^0.11.0"
+  },
+  "description": "Kinesis-Stream-name: tweets DDB-table: tweets",
+  "main": "put-rate-limit-function.js",
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Martin Schade <schadix@gmail.com> (http://schadix.com/)",
+  "license": "ISC"
+}
