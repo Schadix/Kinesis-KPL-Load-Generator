@@ -17,6 +17,7 @@
     <maven-compiler-plugin.version>3.3</maven-compiler-plugin.version>
     <java-source.version>1.8</java-source.version>
     <java-target.version>1.8</java-target.version>
+    <token-bucket.version>1.6</token-bucket.version>
   </properties>
 
   <dependencies>
@@ -54,6 +55,11 @@
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
       <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.isomorphism</groupId>
+      <artifactId>token-bucket</artifactId>
+      <version>${token-bucket.version}</version>
     </dependency>
   </dependencies>
 

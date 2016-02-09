@@ -14,9 +14,10 @@ hs_err_pid*
 /.idea
 *.iml
 
-Infrastructure/cloudformation/config
+infrastructure/cloudformation/config
 
 test/
 Kinesis-Load-Generator/dependency-reduced-pom.xml
-Infrastructure/PutRateLimitFunction/dist/
-Infrastructure/PutRateLimitFunction/node_modules/
+infrastructure/PutRateLimitFunction/dist/
+infrastructure/PutRateLimitFunction/node_modules/
+!script-load-generator/KinesisScalingUtils.jar-complete.jar

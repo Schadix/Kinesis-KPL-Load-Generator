@@ -10,6 +10,8 @@ import org.apache.commons.daemon.DaemonContext;
 import org.apache.commons.daemon.DaemonInitException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.isomorphism.util.TokenBucket;
+import org.isomorphism.util.TokenBuckets;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
@@ -130,18 +132,29 @@ public class DaemonProcess implements Daemon {
           if (worker instanceof AdvancedKPLClickEventsToKinesis) {
             for (int i = 0; i < 200; i++) {
               events.offer(generateClickEvent());
-              long rateLimit = Long.valueOf(loadConfig.get(configRateLimitDDBKey));
-              Thread.sleep(1000 / rateLimit, (int) (1000 % rateLimit));
             }
             Thread.sleep(1000);
           }
 
           exec.submit(() -> {
+            long rateLimit = Long.valueOf(loadConfig.get(configRateLimitDDBKey));
+            TokenBucket bucket = TokenBuckets.builder()
+                .withCapacity(rateLimit)
+                .withFixedIntervalRefillStrategy(rateLimit, 1, TimeUnit.SECONDS)
+                .build();
             while (!stopped) {
               try {
+                // Create a token bucket with a capacity of 1 token that refills at a fixed interval of 1 token/sec.
                 events.put(generateClickEvent());
-                long rateLimit = Long.valueOf(loadConfig.get(configRateLimitDDBKey));
-                Thread.sleep(1000 / rateLimit, (int) (1000 % rateLimit));
+                bucket.consume();
+                if (rateLimit != Long.valueOf(loadConfig.get(configRateLimitDDBKey))) {
+                  log.info(String.format("rateLimit increased from %s to %s", rateLimit, loadConfig.get(configRateLimitDDBKey)));
+                  rateLimit = Long.valueOf(loadConfig.get(configRateLimitDDBKey));
+                  bucket = TokenBuckets.builder()
+                      .withCapacity(rateLimit)
+                      .withFixedIntervalRefillStrategy(rateLimit, 1, TimeUnit.SECONDS)
+                      .build();
+                }
               } catch (InterruptedException e) {
                 log.error(e.getMessage(), e);
               }
@@ -155,10 +168,11 @@ public class DaemonProcess implements Daemon {
       }
     };
 
+    // periodically check for RateLimit updates
     new Thread(() -> {
+      DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient());
       try {
         while (!exec.isTerminated()) {
-          DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient());
           Table table = dynamoDB.getTable(loadConfig.get(ConfigDDBTable));
           Item rateLimitDDB = table.getItem("id", configRateLimitDDBKey);
           String oldValue = loadConfig.get(configRateLimitDDBKey);
