@@ -17,6 +17,9 @@ import javax.xml.bind.DatatypeConverter;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -36,9 +39,12 @@ public class DaemonProcess implements Daemon {
   private Thread sendThread;
   private Thread configUpdateThread;
   private boolean stopped = false;
+  private boolean countup = false;
 
   private List<String> httpLog = new ArrayList<>();
   private AtomicInteger position = new AtomicInteger(0);
+
+  private BigDecimal bd = new BigDecimal(0);
   private static String ConfigDDBTable = "configDDBTable";
   private static String configRateLimitDDBKey = "rateLimit";
 
@@ -53,9 +59,11 @@ public class DaemonProcess implements Daemon {
   AbstractClickEventsToKinesis worker;
 
   private boolean readGzipFile(String filename) {
+    log.info("read GZipFile filename: "+filename);
     try {
       BufferedReader is = new BufferedReader(
           new InputStreamReader(
+
               new GZIPInputStream(
                   new FileInputStream(filename))));
       String line;
@@ -75,12 +83,18 @@ public class DaemonProcess implements Daemon {
   synchronized private ClickEvent generateClickEvent() {
     byte[] id = new byte[13];
     RANDOM.nextBytes(id);
-    if (position.get() > httpLog.size() - 1) {
-      log.info(
-          String.format("in position.set(0 - pos: %s, httpLog.size: %s)", position.get(), httpLog.size()));
-      position.set(0);
+    String data;
+    if (countup) {
+      bd = bd.add(new BigDecimal(1));
+      data = bd.toString();
+    } else {
+      if (position.get() > httpLog.size() - 1) {
+        log.info(
+            String.format("in position.set(0 - pos: %s, httpLog.size: %s)", position.get(), httpLog.size()));
+        position.set(0);
+      }
+      data = httpLog.get(position.getAndIncrement());
     }
-    String data = httpLog.get(position.getAndIncrement());
     return new ClickEvent(DatatypeConverter.printBase64Binary(id), data);
   }
 
@@ -94,13 +108,21 @@ public class DaemonProcess implements Daemon {
     String[] args = daemonContext.getArguments();
     if (args.length != 5) {
       log.info("Usage: command <filename.gz> <AWS Region> <Streamname> <Rate-Limit> <Configuration-DDB-Table>");
+      log.info("if filenname=countup, then just count up");
       System.exit(1);
     }
 
     log.info(String.format("file: %s, region: %s, stream: %s, rate: %s, config-ddb: %s", args[0], args[1], args[2],
         args[3], args[4]));
-    if (!readGzipFile(args[0])) {
-      log.error("Exit with error. Reading input file failed.");
+
+    String fullFilepath = args[0];
+    Path p = Paths.get(fullFilepath);
+    String file = p.getFileName().toString();
+
+    if (file.toLowerCase().equals("countup")) {
+      countup = true;
+    } else if (!readGzipFile(fullFilepath)) {
+      log.error("Exit with error. Reading input file failed for: '"+fullFilepath+"'.");
       System.exit(1);
     }
 
@@ -125,7 +147,6 @@ public class DaemonProcess implements Daemon {
 
       @Override
       public void run() {
-
         try {
           exec.submit(worker);
 
@@ -171,9 +192,9 @@ public class DaemonProcess implements Daemon {
     // periodically check for RateLimit updates
     new Thread(() -> {
       DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient());
+      Table table = dynamoDB.getTable(loadConfig.get(ConfigDDBTable));
       try {
         while (!exec.isTerminated()) {
-          Table table = dynamoDB.getTable(loadConfig.get(ConfigDDBTable));
           Item rateLimitDDB = table.getItem("id", configRateLimitDDBKey);
           String oldValue = loadConfig.get(configRateLimitDDBKey);
           String newValue = rateLimitDDB.getString("value");
@@ -207,7 +228,7 @@ public class DaemonProcess implements Daemon {
               "%d seconds, %d records total, %.2f RPS (avg last 10s), position: %s, httpLog.size(): %s, event.size()" +
                   ": %s",
               seconds, records,
-              rps, position.get(), httpLog.size(), events.size()));
+              rps, countup ? bd : position.get(), countup ? bd : httpLog.size(), events.size()));
           Thread.sleep(1000);
         }
         log.info("Finished.");
