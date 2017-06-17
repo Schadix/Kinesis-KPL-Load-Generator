@@ -1,7 +1,5 @@
 S3BUCKETNAME=sdx-kinesis-load
-STACKNAME=kinesis-load
+STACKNAME=kinesis-load-KPL0122
 TEMPLATENAME=kinesis-loader.template
 REGION=us-east-1
 RATELIMIT=10
-CONFIGDDBTABLE=dev-kpl-load-generator-config
-

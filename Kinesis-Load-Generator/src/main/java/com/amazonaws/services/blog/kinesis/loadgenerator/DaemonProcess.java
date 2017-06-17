@@ -1,6 +1,9 @@
 package com.amazonaws.services.blog.kinesis.loadgenerator;
 
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
@@ -127,9 +130,9 @@ public class DaemonProcess implements Daemon {
     }
 
     config.setRegion(args[1]);
-    config.setAggregationEnabled(false);
-//    TODO: RateLimit didn't work, using it to pause the thread now
-//    config.setRateLimit(Long.parseLong(args[3]));
+    config.setAggregationEnabled(true);
+    //TODO: RateLimit didn't work, using it to pause the thread now
+    //config.setRateLimit(Long.parseLong(args[3]));
     loadConfig.put(ConfigDDBTable, args[4]);
     loadConfig.put(configRateLimitDDBKey, args[3]);
     worker = new AdvancedKPLClickEventsToKinesis(events, config);
@@ -191,7 +194,9 @@ public class DaemonProcess implements Daemon {
 
     // periodically check for RateLimit updates
     new Thread(() -> {
-      DynamoDB dynamoDB = new DynamoDB(new AmazonDynamoDBClient());
+      AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard().build();
+
+      DynamoDB dynamoDB = new DynamoDB(client);
       Table table = dynamoDB.getTable(loadConfig.get(ConfigDDBTable));
       try {
         while (!exec.isTerminated()) {

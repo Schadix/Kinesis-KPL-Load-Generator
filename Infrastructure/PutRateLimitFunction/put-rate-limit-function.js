@@ -7,6 +7,7 @@ var dynamodb = new AWS.DynamoDB({
 	apiVersion: '2012-08-10'
 });
 
+//TODO: Fix hardcoded region!
 AWS.config.update({
 	region: "us-east-1"
 });

@@ -25,7 +25,7 @@
     "StreamName": {
       "Description": "Stream Name",
       "Type": "String",
-      "Default": "spark-example"
+      "Default": "kinesis-load"
     },
     "ImageId": {
       "Description": "ImageId",
@@ -72,6 +72,11 @@
       "Type": "String",
       "Default": "put-rate-limit-function.zip"
     },
+    "VERSION": {
+      "Description": "KPL server version",
+      "Type": "String",
+      "Default": "<<VERSION>>"
+    },
     "FunctionModuleName": {
       "Description": "Name of Lambda JavaScript file (without the js)",
       "Type": "String",
@@ -81,6 +86,13 @@
   "Mappings": {
   },
   "Resources": {
+    "kinesisStream": {
+      "Type" : "AWS::Kinesis::Stream",
+      "Properties" : {
+        "Name" : {"Fn::Join": ["-", [{"Ref": "AWS::StackName"}, {"Ref": "StreamName"}]]},
+        "ShardCount" : 5
+      }
+    },
     "vpc": {
       "Type": "AWS::EC2::VPC",
       "Properties": {
@@ -253,15 +265,50 @@
                 "yum -y remove java-1.7.0-openjdk\n",
                 "yum -y install java-1.8.0-openjdk-devel\n",
                 "yum -y install jsvc\n",
-                "aws s3 cp s3://sdx-kinesis-load/kinesis-load-generator /home/ec2-user/\n",
-                "mv /home/ec2-user/kinesis-load-generator /etc/init.d/\n",
+                "su - ec2-user -c \"aws s3 cp s3://sdx-kinesis-load/",
+                {
+                  "Ref": "VERSION"
+                },"/kinesis-load-generator /home/ec2-user/",
+                {
+                  "Ref": "VERSION"
+                },"/init.d/\"\n",
+                "mv -f /home/ec2-user/",
+                {
+                  "Ref": "VERSION"
+                },"/init.d/kinesis-load-generator /etc/init.d/\n",
                 "chmod 755 /etc/init.d/kinesis-load-generator\n",
-                "aws s3 cp s3://sdx-kinesis-load/logrotate.d/kinesis-load-generator /home/ec2-user/logrotate.d/kinesis-load-generator\n",
-                "mv /home/ec2-user/kinesis-load-generator /etc/logrotate.d/\n",
+                "su - ec2-user -c \"aws s3 cp s3://sdx-kinesis-load/",
+                {
+                  "Ref": "VERSION"
+                },"/logrotate.d/kinesis-load-generator /home/ec2-user/",
+                {
+                  "Ref": "VERSION"
+                },"/logrotate.d/kinesis-load-generator\"\n",
+                "mv -f /home/ec2-user/",
+                {
+                  "Ref": "VERSION"
+                },"/logrotate.d/kinesis-load-generator /etc/logrotate.d/\n",
                 "cp /etc/cron.daily/logrotate /etc/cron.hourly/logrotate\n",
-                "su -c 'mkdir -p /home/ec2-user/kinesis-load-generator/log' ec2-user\n",
-                "aws s3 cp s3://sdx-kinesis-load/kinesis-load-generator-1.0-SNAPSHOT.jar ",
-                "/home/ec2-user/kinesis-load-generator/kinesis-load-generator-1.0-SNAPSHOT.jar\n",
+                "su -c 'mkdir -p /home/ec2-user/",
+                {
+                  "Ref": "VERSION"
+                },"/kinesis-load-generator/log' ec2-user\n",
+                "su - ec2-user -c \"aws s3 cp s3://sdx-kinesis-load/",
+                {
+                  "Ref": "VERSION"
+                },"/kinesis-load-generator-",
+                {
+                  "Ref": "VERSION"
+                },
+                ".jar ",
+                "/home/ec2-user/",
+                {
+                  "Ref": "VERSION"
+                },"/kinesis-load-generator/kinesis-load-generator-",
+                {
+                  "Ref": "VERSION"
+                },
+                ".jar\"\n",
                 "aws s3 cp s3://",
                 {
                   "Ref": "S3FileNameGZ"
@@ -279,7 +326,7 @@
                 "' >> /home/ec2-user/kinesis-load-generator.config\n",
                 "echo 'STREAMNAME=",
                 {
-                  "Ref": "StreamName"
+                  "Ref": "kinesisStream"
                 },
                 "' >> /home/ec2-user/kinesis-load-generator.config\n",
                 "echo 'RATELIMIT=",
@@ -432,7 +479,7 @@
                             [
                               "stream",
                               {
-                                "Ref": "StreamName"
+                                "Ref": "kinesisStream"
                               }
                             ]
                           ]
@@ -656,7 +703,7 @@
             "Arn"
           ]
         },
-        "Runtime": "nodejs",
+        "Runtime": "nodejs4.3",
         "Timeout": "30"
       }
     }

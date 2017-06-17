@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [ "$#" -ne 4 ]; then
-    echo "Usage: $0 <filename.gz> <region> <streamname> <rate-limit>"
+if [ "$#" -ne 5 ]; then
+    echo "Usage: $0 <filename.gz> <region> <streamname> <rate-limit> <DynamoDB-config-table>"
     exit
 fi
 
@@ -9,6 +9,7 @@ FILENAME=$1
 REGION=$2
 STREAMNAME=$3
 RATELIMIT=$4
+DDBCONFIG=$5
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR/../
@@ -23,7 +24,7 @@ echo "jsvc -jvm server -home $JAVA_HOME \
 -pidfile `pwd`/test/mydaemon.pid \
 -debug \
 com.amazonaws.services.blog.kinesis.loadgenerator.DaemonProcess \
-$FILENAME $REGION $STREAMNAME
+$FILENAME $REGION $STREAMNAME $RATELIMIT $DDBCONFIG
 "
 
 jsvc -jvm server -home $JAVA_HOME \
@@ -33,4 +34,4 @@ jsvc -jvm server -home $JAVA_HOME \
 -pidfile `pwd`/test/mydaemon.pid \
 -debug \
 com.amazonaws.services.blog.kinesis.loadgenerator.DaemonProcess \
-$FILENAME $REGION $STREAMNAME $RATELIMIT
+$FILENAME $REGION $STREAMNAME $RATELIMIT $DDBCONFIG

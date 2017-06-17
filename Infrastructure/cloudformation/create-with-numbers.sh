@@ -5,9 +5,11 @@ cd $DIR/
 
 . ./config
 
-aws cloudformation create-stack --stack-name spark-number --capabilities CAPABILITY_IAM \
+aws cloudformation create-stack --stack-name spark-numbers --capabilities CAPABILITY_IAM \
   --template-url https://s3.amazonaws.com/$S3BUCKETNAME/$TEMPLATENAME --region $REGION \
   --parameters \
-  ParameterKey=RateLimit,ParameterValue=10 \
-  ParameterKey=S3FileNameGZ,ParameterValue=sdx-kinesis-load/numbers.gz \
-  ParameterKey=StreamName,ParameterValue=spark-number
+  ParameterKey=RateLimit,ParameterValue=2000 \
+  ParameterKey=S3FileNameGZ,ParameterValue=countup \
+  ParameterKey=StreamName,ParameterValue=spark-numbers \
+  ParameterKey=SshCidr,ParameterValue=72.21.198.67/32
+

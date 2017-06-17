@@ -24,13 +24,14 @@ DESC="Kinesis Load Generator service"
 EXEC="/usr/bin/jsvc"
 
 # The path to the folder containing MyDaemon.jar
-FILE_PATH="/home/ec2-user/kinesis-load-generator"
+FILE_PATH="/home/ec2-user/<<VERSION>>/kinesis-load-generator"
 
 # The path to the folder containing the java runtime
 JAVA_HOME="/usr/lib/jvm/java"
 
 # Our classpath including our jar file and the Apache Commons Daemon library
-CLASS_PATH="$FILE_PATH/kinesis-load-generator-1.0-SNAPSHOT.jar"
+# TODO: get from maven pom
+CLASS_PATH="$FILE_PATH/kinesis-load-generator-<<VERSION>>.jar"
 
 # The fully qualified name of the class to execute
 CLASS="com.amazonaws.services.blog.kinesis.loadgenerator.DaemonProcess"
